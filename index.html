@@ -6,44 +6,176 @@
     <title>Random Video Player</title>
 
     <style>
+      :root {
+        --btn-size: 48px;
+      }
+      html,
       body {
+        height: 100%;
         margin: 0;
         background: black;
+      }
+      .player-wrap {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
         overflow: hidden;
       }
       video {
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         object-fit: cover;
+        display: block;
+        background: black;
+      }
+      .controls {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        display: flex;
+        gap: 8px;
+        z-index: 10;
+      }
+      .btn {
+        width: var(--btn-size);
+        height: var(--btn-size);
+        border-radius: 6px;
+        border: none;
+        background: rgba(0, 0, 0, 0.5);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .info {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        color: rgba(255, 255, 255, 0.9);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+        z-index: 10;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
       }
     </style>
   </head>
   <body>
-    <video id="videoPlayer" autoplay playsinline></video>
+    <div class="player-wrap">
+      <video id="videoPlayer" playsinline></video>
+
+      <div class="controls">
+        <button id="skipBtn" class="btn" title="Skip">Skip</button>
+        <button id="muteBtn" class="btn" title="Mute/Unmute">Mute</button>
+      </div>
+
+      <div class="info" id="info">Loading...</div>
+    </div>
 
     <script>
-      // ✅ PUT YOUR VIDEO LINKS HERE
+      /*
+        INSTRUCTIONS
+        - Replace items in `videos` with direct video file URLs (mp4, webm, etc.).
+        - The page accepts an optional query parameter `?next=` to override the redirect URL.
+          Example: index.html?next=https%3A%2F%2Fexample.com
+      */
+
+      // --- CONFIG ---
       const videos = [
-        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/783973352.790060.mp4",
-        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/783973352.763897.mp4",
-        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/783973352.715665.mp4",
+        "https://drive.google.com/uc?export=download&id=1C3TDf7zqgdcmYPAiVeaiWvK3g1Yxs28e",
+        "https://drive.google.com/uc?export=download&id=1IKuK6BUZrvxzQcOCBvHWUNkWC18rWOe3",
       ];
 
-      // ✅ RANDOMLY SELECT ONE VIDEO
-      const randomVideo = videos[Math.floor(Math.random() * videos.length)];
+      // Default redirect if no `next` query param is provided
+      const DEFAULT_REDIRECT = "https://hiherbthailand.com/";
 
+      // --- UTIL ---
+      function getQueryParam(name) {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          return params.get(name);
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function chooseRandom(arr) {
+        if (!arr || arr.length === 0) return null;
+        return arr[Math.floor(Math.random() * arr.length)];
+      }
+
+      // --- SETUP ---
       const player = document.getElementById("videoPlayer");
-      player.src = randomVideo;
+      const info = document.getElementById("info");
+      const skipBtn = document.getElementById("skipBtn");
+      const muteBtn = document.getElementById("muteBtn");
 
-      // ✅ WHEN VIDEO FINISHES → GO TO WEBSITE
-      player.addEventListener("ended", function () {
-        window.location.href = "https://hiherbthailand.com/"; // Change this to your final URL
+      const redirectUrl = decodeURIComponent(
+        getQueryParam("next") || DEFAULT_REDIRECT
+      );
+
+      // Choose video: if user provided no videos array, show message and redirect after short delay
+      let selected = chooseRandom(videos);
+      if (!selected) {
+        info.textContent = "No videos configured. Redirecting...";
+        // Small delay so user sees message
+        setTimeout(() => (window.location.href = redirectUrl), 1500);
+      } else {
+        info.textContent = "Playing a short video...";
+      }
+
+      // Autoplay rules: many browsers require muted autoplay. Start muted, let user unmute.
+      player.muted = true;
+      player.src = selected || "";
+      player.preload = "auto";
+      player.playsInline = true;
+
+      // Try to play; if it fails, show a play hint and a fallback redirect later
+      player.play().catch((err) => {
+        info.textContent = "Tap to play";
+        // show overlay to play on user interaction
+        const tapToPlay = () => {
+          player
+            .play()
+            .then(() => {
+              info.textContent = "";
+              window.removeEventListener("click", tapToPlay);
+            })
+            .catch(() => {});
+        };
+        window.addEventListener("click", tapToPlay);
       });
 
-      // ✅ FALLBACK in case autoplay fails (you can remove this if you don’t want)
-      setTimeout(() => {
-        window.location.href = "https://hiherbthailand.com/"; // same URL here
-      }, 10000); // 10 seconds timeout
+      // When video ends -> redirect
+      player.addEventListener("ended", () => {
+        window.location.href = redirectUrl;
+      });
+
+      // Skip button
+      skipBtn.addEventListener("click", () => {
+        window.location.href = redirectUrl;
+      });
+
+      // Mute/unmute
+      function updateMuteBtn() {
+        muteBtn.textContent = player.muted ? "Unmute" : "Mute";
+      }
+      muteBtn.addEventListener("click", () => {
+        player.muted = !player.muted;
+        updateMuteBtn();
+      });
+      updateMuteBtn();
+
+      // Safety fallback: if video hasn't started in 12s, go to redirect (avoids stuck pages)
+      const fallbackTimeout = setTimeout(() => {
+        if (player && (player.readyState < 2 || player.paused)) {
+          window.location.href = redirectUrl;
+        }
+      }, 12000);
+
+      // Clear fallback if video actually plays
+      player.addEventListener("playing", () => {
+        clearTimeout(fallbackTimeout);
+        info.textContent = "";
+      });
     </script>
   </body>
 </html>
