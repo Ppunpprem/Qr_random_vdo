@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Random Video Player</title>
+
+    <style>
+      body {
+        margin: 0;
+        background: black;
+        overflow: hidden;
+      }
+      video {
+        width: 100vw;
+        height: 100vh;
+        object-fit: cover;
+      }
+    </style>
+  </head>
+  <body>
+    <video id="videoPlayer" autoplay playsinline></video>
+
+    <script>
+      // ✅ PUT YOUR VIDEO LINKS HERE
+      const videos = [
+        "/Users/premmikapremratanachai/Documents/QR_vdo/Qr_random_vdo/783973352.715665.mp4",
+        "/Users/premmikapremratanachai/Documents/QR_vdo/Qr_random_vdo/783973352.763897.mp4",
+        "/Users/premmikapremratanachai/Documents/QR_vdo/Qr_random_vdo/783973352.790060.mp4",
+      ];
+
+      // ✅ RANDOMLY SELECT ONE VIDEO
+      const randomVideo = videos[Math.floor(Math.random() * videos.length)];
+
+      const player = document.getElementById("videoPlayer");
+      player.src = randomVideo;
+
+      // ✅ WHEN VIDEO FINISHES → GO TO WEBSITE
+      player.addEventListener("ended", function () {
+        window.location.href = "https://hiherbthailand.com/"; // Change this to your final URL
+      });
+
+      // ✅ FALLBACK in case autoplay fails (you can remove this if you don’t want)
+      setTimeout(() => {
+        window.location.href = "https://hiherbthailand.com/"; // same URL here
+      }, 10000); // 10 seconds timeout
+    </script>
+  </body>
+</html>
