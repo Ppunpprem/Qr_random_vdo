@@ -3,12 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Random Video Player</title>
+    <title>Video With Sound Autoplay</title>
 
     <style>
-      :root {
-        --btn-size: 48px;
-      }
       html,
       body {
         height: 100%;
@@ -28,206 +25,79 @@
         display: block;
         background: black;
       }
-      .controls {
+      .tap-to-play {
         position: absolute;
-        top: 12px;
-        right: 12px;
-        display: flex;
-        gap: 8px;
-        z-index: 10;
-      }
-      .btn {
-        width: var(--btn-size);
-        height: var(--btn-size);
-        border-radius: 6px;
-        border: none;
-        background: rgba(0, 0, 0, 0.5);
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         color: white;
-        font-weight: 600;
+        background-color: rgba(0, 0, 0, 0.6);
+        padding: 16px 24px;
+        border-radius: 8px;
+        font-size: 18px;
         cursor: pointer;
-      }
-      .info {
-        position: absolute;
-        left: 12px;
-        bottom: 12px;
-        color: rgba(255, 255, 255, 0.9);
-        font-family: system-ui, -apple-system, "Segoe UI", Roboto,
-          "Helvetica Neue", Arial;
+        display: none;
         z-index: 10;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
       }
     </style>
   </head>
   <body>
     <div class="player-wrap">
-      <video id="videoPlayer" playsinline></video>
-
-      <div class="controls">
-        <button id="skipBtn" class="btn" title="Skip">Skip</button>
-        <button id="muteBtn" class="btn" title="Mute/Unmute">Mute</button>
-      </div>
-
-      <div class="info" id="info">Loading...</div>
+      <video id="videoPlayer" playsinline autoplay></video>
+      <div id="tapToPlay" class="tap-to-play">Tap to play with sound 🔊</div>
     </div>
 
     <script>
-      /*
-        INSTRUCTIONS
-        - Replace items in `videos` with direct video file URLs (mp4, webm, etc.).
-        - The page accepts an optional query parameter `?next=` to override the redirect URL.
-          Example: index.html?next=https%3A%2F%2Fexample.com
-      */
-
-      // --- CONFIG ---
       const videos = [
-        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/vdo/783973352.763897.mp4",
-        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/vdo/783973352.715665.mp4",
-        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/vdo/783973352.790060.mp4",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/783973352.763897.mp4",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/783973352.715665.mp4",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/783973352.790060.mp4",
       ];
 
-      // Default redirect if no `next` query param is provided
       const DEFAULT_REDIRECT = "https://hiherbthailand.com/";
 
-      // --- UTIL ---
       function getQueryParam(name) {
-        try {
-          const params = new URLSearchParams(window.location.search);
-          return params.get(name);
-        } catch (e) {
-          return null;
-        }
+        const params = new URLSearchParams(window.location.search);
+        return params.get(name);
       }
 
       function chooseRandom(arr) {
-        if (!arr || arr.length === 0) return null;
         return arr[Math.floor(Math.random() * arr.length)];
       }
 
-      // --- SETUP ---
       const player = document.getElementById("videoPlayer");
-      const info = document.getElementById("info");
-      const skipBtn = document.getElementById("skipBtn");
-      const muteBtn = document.getElementById("muteBtn");
-
+      const tapToPlay = document.getElementById("tapToPlay");
       const redirectUrl = decodeURIComponent(
         getQueryParam("next") || DEFAULT_REDIRECT
       );
 
-      // --- URL normalizer ---
-      function convertGithubBlobToRaw(u) {
-        // Convert GitHub blob page URLs to raw.githubusercontent URLs
-        // e.g. https://github.com/owner/repo/blob/main/path/file.mp4
-        // -> https://raw.githubusercontent.com/owner/repo/main/path/file.mp4
-        try {
-          const gh = u.match(
-            /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/
-          );
-          if (gh) {
-            const owner = gh[1];
-            const repo = gh[2];
-            const branch = gh[3];
-            const path = gh[4];
-            return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
-          }
-        } catch (e) {}
-        return u;
-      }
-
-      function normalizeUrl(path) {
-        if (!path) return null;
-        let url = String(path).trim();
-
-        // If it's a GitHub blob link, convert it to raw URL
-        url = convertGithubBlobToRaw(url);
-
-        // If it looks like an absolute filesystem path (starts with '/')
-        if (/^\//.test(url)) {
-          if (location.protocol === "file:") {
-            // When opened as file://, use file:// to load local files
-            return "file://" + url;
-          } else {
-            // When served over http(s), browsers can't access arbitrary file:// paths.
-            // Try using the basename as a relative fallback (user should place the file next to index.html)
-            const base = url.split("/").pop();
-            info.textContent =
-              "Using local filename fallback: " +
-              base +
-              ". If the file does not exist on the server, either open this page with file:// or serve the folder with a static HTTP server and place the video next to index.html.";
-            return "./" + base;
-          }
-        }
-
-        // If already a file:// or http(s) URL or a relative path, return as-is
-        if (/^(https?:|file:)/.test(url) || /^[.\\/]/.test(url)) return url;
-
-        // Otherwise treat a bare filename as relative
-        return "./" + url;
-      }
-
-      // Choose video: if user provided no videos array, show message and redirect after short delay
-      let selected = chooseRandom(videos);
-      if (!selected) {
-        info.textContent = "No videos configured. Redirecting...";
-        // Small delay so user sees message
-        setTimeout(() => (window.location.href = redirectUrl), 1500);
-      } else {
-        info.textContent = "Preparing video...";
-      }
-
-      // Autoplay rules: many browsers require muted autoplay. Start muted, let user unmute.
-      player.muted = true;
-      const playable = normalizeUrl(selected || "");
-      player.src = playable || "";
-      player.preload = "auto";
+      const selectedVideo = chooseRandom(videos);
+      player.src = selectedVideo;
+      player.autoplay = true;
+      player.muted = false; // Not muted
       player.playsInline = true;
+      player.preload = "auto";
 
-      // Try to play; if it fails, show a play hint and a fallback redirect later
       player.play().catch((err) => {
-        info.textContent = "Tap to play";
-        // show overlay to play on user interaction
-        const tapToPlay = () => {
-          player
-            .play()
-            .then(() => {
-              info.textContent = "";
-              window.removeEventListener("click", tapToPlay);
-            })
-            .catch(() => {});
+        // Autoplay with sound blocked
+        console.log("Autoplay blocked:", err);
+        tapToPlay.style.display = "block";
+        player.muted = true;
+
+        const startPlayback = () => {
+          tapToPlay.style.display = "none";
+          player.muted = false;
+          player.play();
+          window.removeEventListener("click", startPlayback);
+          window.removeEventListener("touchstart", startPlayback);
         };
-        window.addEventListener("click", tapToPlay);
+
+        window.addEventListener("click", startPlayback);
+        window.addEventListener("touchstart", startPlayback);
       });
 
-      // When video ends -> redirect
       player.addEventListener("ended", () => {
         window.location.href = redirectUrl;
-      });
-
-      // Skip button
-      skipBtn.addEventListener("click", () => {
-        window.location.href = redirectUrl;
-      });
-
-      // Mute/unmute
-      function updateMuteBtn() {
-        muteBtn.textContent = player.muted ? "Unmute" : "Mute";
-      }
-      muteBtn.addEventListener("click", () => {
-        player.muted = !player.muted;
-        updateMuteBtn();
-      });
-      updateMuteBtn();
-
-      // Safety fallback: if video hasn't started in 12s, go to redirect (avoids stuck pages)
-      const fallbackTimeout = setTimeout(() => {
-        if (player && (player.readyState < 2 || player.paused)) {
-          window.location.href = redirectUrl;
-        }
-      }, 12000);
-
-      // Clear fallback if video actually plays
-      player.addEventListener("playing", () => {
-        clearTimeout(fallbackTimeout);
-        info.textContent = "";
       });
     </script>
   </body>
