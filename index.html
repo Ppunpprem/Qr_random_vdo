@@ -80,8 +80,9 @@
 
       // --- CONFIG ---
       const videos = [
-        "https://drive.google.com/uc?export=download&id=1C3TDf7zqgdcmYPAiVeaiWvK3g1Yxs28e",
-        "https://drive.google.com/uc?export=download&id=1IKuK6BUZrvxzQcOCBvHWUNkWC18rWOe3",
+        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/vdo/783973352.763897.mp4",
+        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/vdo/783973352.715665.mp4",
+        "https://github.com/Ppunpprem/Qr_random_vdo/blob/main/vdo/783973352.790060.mp4",
       ];
 
       // Default redirect if no `next` query param is provided
@@ -112,6 +113,57 @@
         getQueryParam("next") || DEFAULT_REDIRECT
       );
 
+      // --- URL normalizer ---
+      function convertGithubBlobToRaw(u) {
+        // Convert GitHub blob page URLs to raw.githubusercontent URLs
+        // e.g. https://github.com/owner/repo/blob/main/path/file.mp4
+        // -> https://raw.githubusercontent.com/owner/repo/main/path/file.mp4
+        try {
+          const gh = u.match(
+            /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/
+          );
+          if (gh) {
+            const owner = gh[1];
+            const repo = gh[2];
+            const branch = gh[3];
+            const path = gh[4];
+            return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+          }
+        } catch (e) {}
+        return u;
+      }
+
+      function normalizeUrl(path) {
+        if (!path) return null;
+        let url = String(path).trim();
+
+        // If it's a GitHub blob link, convert it to raw URL
+        url = convertGithubBlobToRaw(url);
+
+        // If it looks like an absolute filesystem path (starts with '/')
+        if (/^\//.test(url)) {
+          if (location.protocol === "file:") {
+            // When opened as file://, use file:// to load local files
+            return "file://" + url;
+          } else {
+            // When served over http(s), browsers can't access arbitrary file:// paths.
+            // Try using the basename as a relative fallback (user should place the file next to index.html)
+            const base = url.split("/").pop();
+            info.textContent =
+              "Using local filename fallback: " +
+              base +
+              ". If the file does not exist on the server, either open this page with file:// or serve the folder with a static HTTP server and place the video next to index.html.";
+            return "./" + base;
+          }
+        }
+
+        // If already a file:// or http(s) URL or a relative path, return as-is
+        if (/^(https?:|file:)/.test(url) || /^[.\\/]/.test(url)) return url;
+
+        // Otherwise treat a bare filename as relative
+        return "./" + url;
+      }
+
       // Choose video: if user provided no videos array, show message and redirect after short delay
       let selected = chooseRandom(videos);
       if (!selected) {
@@ -119,12 +171,13 @@
         // Small delay so user sees message
         setTimeout(() => (window.location.href = redirectUrl), 1500);
       } else {
-        info.textContent = "Playing a short video...";
+        info.textContent = "Preparing video...";
       }
 
       // Autoplay rules: many browsers require muted autoplay. Start muted, let user unmute.
       player.muted = true;
-      player.src = selected || "";
+      const playable = normalizeUrl(selected || "");
+      player.src = playable || "";
       player.preload = "auto";
       player.playsInline = true;
 
