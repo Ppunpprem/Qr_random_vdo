@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Video With Sound Autoplay</title>
+    <title>Responsive Video With Sound Autoplay</title>
 
     <style>
       html,
@@ -16,13 +16,16 @@
         position: relative;
         width: 100vw;
         height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
         overflow: hidden;
+        background: black;
       }
       video {
         width: 100%;
         height: 100%;
-        object-fit: cover;
-        display: block;
+        object-fit: contain; /* Make sure full video is shown */
         background: black;
       }
       .tap-to-play {
@@ -31,7 +34,7 @@
         left: 50%;
         transform: translate(-50%, -50%);
         color: white;
-        background-color: rgba(0, 0, 0, 0.6);
+        background-color: rgba(0, 0, 0, 0.7);
         padding: 16px 24px;
         border-radius: 8px;
         font-size: 18px;
@@ -44,7 +47,7 @@
   <body>
     <div class="player-wrap">
       <video id="videoPlayer" playsinline autoplay></video>
-      <div id="tapToPlay" class="tap-to-play">Tap to play with sound 🔊</div>
+      <div id="tapToPlay" class="tap-to-play">Tap to unmute & play 🔊</div>
     </div>
 
     <script>
@@ -58,8 +61,7 @@
       const DEFAULT_REDIRECT = "https://hiherbthailand.com/";
 
       function getQueryParam(name) {
-        const params = new URLSearchParams(window.location.search);
-        return params.get(name);
+        return new URLSearchParams(window.location.search).get(name);
       }
 
       function chooseRandom(arr) {
@@ -74,27 +76,28 @@
 
       const selectedVideo = chooseRandom(videos);
       player.src = selectedVideo;
-      player.autoplay = true;
-      player.muted = false; // Not muted
+      player.muted = false; // Try to autoplay with sound
       player.playsInline = true;
+      player.autoplay = true;
       player.preload = "auto";
 
+      // Try playing with sound
       player.play().catch((err) => {
-        // Autoplay with sound blocked
-        console.log("Autoplay blocked:", err);
-        tapToPlay.style.display = "block";
-        player.muted = true;
+        console.warn("Autoplay with sound blocked:", err);
+        player.muted = true; // Mute to allow autoplay
+        player.play();
 
-        const startPlayback = () => {
+        // Show tap-to-play overlay to allow sound
+        tapToPlay.style.display = "block";
+        const unmuteAndPlay = () => {
           tapToPlay.style.display = "none";
           player.muted = false;
           player.play();
-          window.removeEventListener("click", startPlayback);
-          window.removeEventListener("touchstart", startPlayback);
+          window.removeEventListener("click", unmuteAndPlay);
+          window.removeEventListener("touchstart", unmuteAndPlay);
         };
-
-        window.addEventListener("click", startPlayback);
-        window.addEventListener("touchstart", startPlayback);
+        window.addEventListener("click", unmuteAndPlay);
+        window.addEventListener("touchstart", unmuteAndPlay);
       });
 
       player.addEventListener("ended", () => {
