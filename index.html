@@ -46,7 +46,13 @@
   </head>
   <body>
     <div class="player-wrap">
-      <video id="videoPlayer" playsinline autoplay></video>
+      <video
+        id="videoPlayer"
+        playsinline
+        webkit-playsinline
+        x5-playsinline
+        autoplay
+      ></video>
       <div id="tapToPlay" class="tap-to-play">Tap to unmute & play 🔊</div>
     </div>
 
@@ -81,24 +87,63 @@
       player.autoplay = true;
       player.preload = "auto";
 
-      // Try playing with sound
-      player.play().catch((err) => {
-        console.warn("Autoplay with sound blocked:", err);
-        player.muted = true; // Mute to allow autoplay
-        player.play();
-
-        // Show tap-to-play overlay to allow sound
-        tapToPlay.style.display = "block";
-        const unmuteAndPlay = () => {
+      // Try playing with sound (best-effort). Many mobile browsers block autoplay with sound.
+      (async () => {
+        try {
+          await player.play();
+          // success: playing with sound
           tapToPlay.style.display = "none";
-          player.muted = false;
-          player.play();
-          window.removeEventListener("click", unmuteAndPlay);
-          window.removeEventListener("touchstart", unmuteAndPlay);
-        };
-        window.addEventListener("click", unmuteAndPlay);
-        window.addEventListener("touchstart", unmuteAndPlay);
-      });
+        } catch (err) {
+          console.warn("Autoplay with sound blocked:", err);
+          // Try muted autoplay so video shows
+          try {
+            player.muted = true;
+            await player.play();
+          } catch (muteErr) {
+            console.warn("Muted autoplay also failed:", muteErr);
+          }
+
+          // Show tap-to-play overlay to allow sound via user gesture
+          tapToPlay.style.display = "block";
+
+          const unmuteAndPlay = async (ev) => {
+            try {
+              // Some Android browsers need the gesture to be on the video element itself.
+              // We'll try to resume playback after unmuting. Use a short pause/resume hack if necessary.
+              tapToPlay.style.display = "none";
+              player.muted = false;
+              // Try to play; if it fails, try a pause/resume sequence
+              try {
+                await player.play();
+              } catch (playErr) {
+                console.warn(
+                  "play() after unmute failed, trying restart sequence",
+                  playErr
+                );
+                try {
+                  player.pause();
+                  // bump currentTime slightly to force decoding in some engines
+                  player.currentTime = Math.max(0, player.currentTime - 0.01);
+                  await player.play();
+                } catch (retryErr) {
+                  console.error(
+                    "Unable to resume playback after unmuting:",
+                    retryErr
+                  );
+                  // show overlay again so user can try
+                  tapToPlay.style.display = "block";
+                }
+              }
+            } finally {
+              window.removeEventListener("click", unmuteAndPlay);
+              window.removeEventListener("touchstart", unmuteAndPlay);
+            }
+          };
+
+          window.addEventListener("click", unmuteAndPlay, { once: true });
+          window.addEventListener("touchstart", unmuteAndPlay, { once: true });
+        }
+      })();
 
       player.addEventListener("ended", () => {
         window.location.href = redirectUrl;
