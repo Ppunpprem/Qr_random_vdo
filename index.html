@@ -62,7 +62,22 @@
         // "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/783973352.715665.mp4",
         // "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/783973352.790060.mp4",
         // "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/784105864.556887.mp4",
-
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion1.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion2.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion3.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion4.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion5.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion6.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion7.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion8.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion9.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion10.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion11.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion12.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion13.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion14.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion15.mov",
+        "https://raw.githubusercontent.com/Ppunpprem/Qr_random_vdo/main/vdo/drive-download-20251109T112025Z-1-001/hi-herb_motion16.mov",
       ];
 
       const DEFAULT_REDIRECT = "https://linktr.ee/hi_herb";
@@ -71,8 +86,26 @@
         return new URLSearchParams(window.location.search).get(name);
       }
 
-      function chooseRandom(arr) {
-        return arr[Math.floor(Math.random() * arr.length)];
+      // Weighted random selection. `weights` should be an array of numbers
+      // with the same length as `arr`. Values are relative (don't need to sum to 1).
+      function chooseWeightedRandom(arr, weights) {
+        if (!Array.isArray(arr) || arr.length === 0) return null;
+        if (!Array.isArray(weights) || weights.length !== arr.length) {
+          // Fallback to uniform random selection if weights are invalid
+          return arr[Math.floor(Math.random() * arr.length)];
+        }
+        const sum = weights.reduce(
+          (s, w) => s + (typeof w === "number" && isFinite(w) ? w : 0),
+          0
+        );
+        if (sum <= 0) return arr[Math.floor(Math.random() * arr.length)];
+        let r = Math.random() * sum;
+        for (let i = 0; i < arr.length; i++) {
+          r -= weights[i];
+          if (r < 0) return arr[i];
+        }
+        // Shouldn't happen, but return last as fallback
+        return arr[arr.length - 1];
       }
 
       const player = document.getElementById("videoPlayer");
@@ -81,7 +114,13 @@
         getQueryParam("next") || DEFAULT_REDIRECT
       );
 
-      const selectedVideo = chooseRandom(videos);
+      // Weights: first 15 items -> 6.6% each, last item -> 1%
+      const weights = [
+        6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6, 6.6,
+        6.6, 1.0,
+      ];
+
+      const selectedVideo = chooseWeightedRandom(videos, weights);
       player.src = selectedVideo;
       player.muted = false; // Try to autoplay with sound
       player.playsInline = true;
